@@ -13,27 +13,27 @@ enum SensorType {
 };
 
 class Sensor {
-protected:
-    String name;
-    String id;
-    boolean connected;
-    SensorType sensorType;
-public:
-    Sensor() {}
-    Sensor(String name, String id, enum SensorType sensorType)
-        : name(name), id(id), sensorType(sensorType) {}
+    protected:
+        String name;
+        String id;
+        boolean connected;
+        SensorType sensorType;
+    public:
+        Sensor() {}
+        Sensor(String name, String id, enum SensorType sensorType)
+            : name(name), id(id), sensorType(sensorType) {}
 
-    virtual ~Sensor() {}
+        virtual ~Sensor() {}
 
-    String getName() const { return name; }
-    String getId()   const { return id; }
+        String getName() const { return name; }
+        String getId()   const { return id; }
 
-    boolean getConnected()   const { return id; }
-    void setConnected(boolean status);
-    enum SensorType getSensorType()   const { return sensorType; }
+        boolean getConnected()   const { return id; }
+        void setConnected(boolean status);
+        enum SensorType getSensorType()   const { return sensorType; }
 
-    virtual void readData() = 0;
-    void parseData(JsonDocument& doc);
-};
+        virtual void readData() = 0;
+        void parseData(JsonDocument& doc);
+    };
 
 #endif

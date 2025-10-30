@@ -4,8 +4,13 @@
 #include "FS.h"
 #include "LittleFS.h"
 #include "BLECallbacks.hpp"
+#include "CharacteristicCallbacks.hpp"
+#include "BLE2902.h"
 
-#define HUMIDITY_SENSOR_PIN 23
+#define HUMIDITY_SENSOR_PIN 32
+#define GREEN_LED_POWER_INDICATOR_PIN 27
+#define BLUE_LED_BLUETOOTH_INDICATOR_PIN 26
+#define YELLOW_LED_SENDING_BDATA 25
 #define SENSOR_READ_DURATION_MS 5000  // Time in MS between sensor readings
 #define BLE_NAME "SmartPot"
 #define BLE_SERVICE_UUID "6360ec7b-a2b6-41d2-87c6-be45caf92838"
@@ -13,6 +18,8 @@
 
 
 Plant plant;
+BLEService *pService;
+BLECharacteristic *pCharacteristic;
 
 // Method signatures
 void bluetoothThreadEntry(void *pvParameters);
@@ -25,10 +32,14 @@ struct ActualConditions formatConditions(enum SensorType sensorType, JsonDocumen
 // Global Variables 
 JsonDocument plantDatabase;
 HumiditySensor hts;
-
+BLEServer *pServer;
 
 void setup() {
   Serial.begin(115200);
+
+  pinMode(GREEN_LED_POWER_INDICATOR_PIN, OUTPUT);
+  pinMode(BLUE_LED_BLUETOOTH_INDICATOR_PIN, OUTPUT);
+  pinMode(YELLOW_LED_SENDING_BDATA, OUTPUT);
 
   boolean status = loadPlantDatabaseIntoMemory();
   if(!status) {
@@ -37,9 +48,10 @@ void setup() {
 
   plant = Plant(plantDatabase);
 
-  Serial.println("Hey");
-  sensorSetup();  
+  digitalWrite(GREEN_LED_POWER_INDICATOR_PIN, HIGH);
+
   bluetoothSetup();
+  sensorSetup();  
 
   xTaskCreatePinnedToCore(sensorThreadEntry, "Sensor Thread", 4096, NULL, 2, NULL, 1);
 }
@@ -52,18 +64,26 @@ void bluetoothSetup() {
   BLEDevice::init(BLE_NAME);
 
   // Create server
-  BLEServer *pServer = BLEDevice::createServer();
-
+  pServer = BLEDevice::createServer();
   // Create Service 
-  BLEService *pService = pServer->createService(BLE_SERVICE_UUID);
-
+  pService = pServer->createService(BLE_SERVICE_UUID);
+  
   // Create Characteristic 
-  BLECharacteristic *pCharacteristic = pService->createCharacteristic(BLE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  CharacteristicCallbacks *bleCharCb = new CharacteristicCallbacks();
+  pCharacteristic = pService->createCharacteristic(BLE_CHARACTERISTIC_UUID, 
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pCharacteristic->setCallbacks(bleCharCb);
 
-  BLECallbacks *cb = new BLECallbacks();
+  BLE2902 *p2902Descriptor = new BLE2902();
+  pCharacteristic->addDescriptor(p2902Descriptor);
+
+  BLECallbacks *cb = new BLECallbacks(bleCharCb, BLUE_LED_BLUETOOTH_INDICATOR_PIN);
   pServer->setCallbacks(cb);
 
-  pCharacteristic->setValue("Hello World");
+  // pCharacteristic->setValue("Hello World");
+
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(BLE_SERVICE_UUID);
@@ -81,21 +101,34 @@ void sensorSetup() {
 // Sensor threading
 void sensorThreadEntry(void *pvParameters) {
  while(1) {
-    JsonDocument doc;
-    // If a sensor isn't connected, don't read the data from it.
-    if(!hts.getConnected()) {
-      Serial.println("HTS Sensor not connected...");
-      hts.readData();
-      vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_DURATION_MS));
-      continue;
-    };
+    String data;
+    JsonDocument dataToTransmit = JsonDocument();
+    int delayDur = SENSOR_READ_DURATION_MS;
 
+    // Read in data from sensor
     hts.readData();
 
-    JsonDocument data = hts.parseData()["data"];
-    struct ActualConditions testDataConditions = formatConditions(TEMPERATURE_AND_HUMIDITY, data);
+    // Format to JSON for ease of use
+    dataToTransmit.add(hts.parseData());
 
-    vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_DURATION_MS));
+    // Serialize for transmission
+    serializeJson(dataToTransmit, data);
+
+    // Only transmit data when clients are connected
+    if(pServer->getConnectedCount() > 0) {
+      digitalWrite(YELLOW_LED_SENDING_BDATA, HIGH);
+      delayDur -= 1000;
+
+      // Set value and notify client of new data
+      pCharacteristic->setValue(data.c_str());
+      pCharacteristic->notify();
+      delay(1000);
+      digitalWrite(YELLOW_LED_SENDING_BDATA, LOW);
+
+    }
+
+    // Wait 5 seconds
+    vTaskDelay(pdMS_TO_TICKS(delayDur));
   }
 }
 
