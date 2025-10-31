@@ -6,6 +6,7 @@
 #include "BLECallbacks.hpp"
 #include "CharacteristicCallbacks.hpp"
 #include "BLE2902.h"
+#include "Wire.h"
 
 #define HUMIDITY_SENSOR_PIN 32
 #define GREEN_LED_POWER_INDICATOR_PIN 27
@@ -16,6 +17,11 @@
 #define BLE_SERVICE_UUID "6360ec7b-a2b6-41d2-87c6-be45caf92838"
 #define BLE_CHARACTERISTIC_UUID "46f45f15-b963-4e4e-bde9-6a9a677df4b4"
 
+// These are the addresses for the sensors 
+#define DISPLAY_ADDRESS 0x3D
+#define TEMP_ADDRESS 0x40
+#define LIGHT_ADDRESS 0x23
+#define SOIL_ADDRESS 0x36
 
 Plant plant;
 BLEService *pService;

@@ -2,12 +2,15 @@
 
 HumiditySensor::HumiditySensor() {};
 
-HumiditySensor::HumiditySensor(uint8_t pin, String name, String id) : Sensor(name, id, TEMPERATURE_AND_HUMIDITY) {
-    sensor.setup(pin, DHTesp::DHT11);
+HumiditySensor::HumiditySensor(uint8_t addr, String name, String id) : Sensor(name, id, TEMPERATURE_AND_HUMIDITY) {
+    sensor = Adafruit_HTU31D();
 }    
 
 void HumiditySensor::readData() {
-    sensorData = sensor.getTempAndHumidity();
+    sensors_event_t temp, hum;
+    sensor.getEvent(&hum, &temp);
+    sensorData.humidity = hum.relative_humidity;
+    sensorData.temperature = temp.temperature;
 }
 
 void HumiditySensor::setConnected(boolean status) {

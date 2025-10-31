@@ -1,10 +1,15 @@
 #pragma once
 #include <Sensor.hpp>
-#include <DHTesp.h>     // TEMPERATURE SENSOR LIB
+#include <Adafruit_HTU31D.h>
+
+struct TempAndHumidity {
+    float temperature;
+    float humidity;
+};
 
 class HumiditySensor : public Sensor {
     private:
-        DHTesp sensor;
+        Adafruit_HTU31D sensor;
         TempAndHumidity sensorData;
         boolean connected;
         
