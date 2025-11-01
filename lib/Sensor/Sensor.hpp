@@ -24,7 +24,8 @@ class Sensor {
             : name(name), id(id), sensorType(sensorType) {}
 
         virtual ~Sensor() {}
-
+        
+        
         String getName() const { return name; }
         String getId()   const { return id; }
 
@@ -33,6 +34,7 @@ class Sensor {
         enum SensorType getSensorType()   const { return sensorType; }
 
         virtual void readData() = 0;
+        virtual boolean begin() = 0;
         void parseData(JsonDocument& doc);
     };
 

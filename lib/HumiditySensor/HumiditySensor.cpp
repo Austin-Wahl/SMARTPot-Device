@@ -6,6 +6,10 @@ HumiditySensor::HumiditySensor(uint8_t addr, String name, String id) : Sensor(na
     sensor = Adafruit_HTU31D();
 }    
 
+boolean HumiditySensor::begin() {
+    return sensor.begin();
+}
+
 void HumiditySensor::readData() {
     sensors_event_t temp, hum;
     sensor.getEvent(&hum, &temp);

@@ -3,6 +3,15 @@
   "files.associations": {
     "cmath": "cpp",
     "new": "cpp",
-    "string": "cpp"
+    "string": "cpp",
+    "array": "cpp",
+    "deque": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "vector": "cpp",
+    "string_view": "cpp",
+    "memory": "cpp",
+    "random": "cpp",
+    "initializer_list": "cpp"
   }
 }

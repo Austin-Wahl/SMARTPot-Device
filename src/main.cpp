@@ -59,7 +59,7 @@ void setup() {
   bluetoothSetup();
   sensorSetup();  
 
-  xTaskCreatePinnedToCore(sensorThreadEntry, "Sensor Thread", 4096, NULL, 2, NULL, 1);
+  // xTaskCreatePinnedToCore(sensorThreadEntry, "Sensor Thread", 4096, NULL, 2, NULL, 1);
 }
 
 void loop() {}
@@ -102,6 +102,7 @@ void bluetoothSetup() {
 // Sensor configuration
 void sensorSetup() {
    hts = HumiditySensor((int)HUMIDITY_SENSOR_PIN, "Humidity and Temperature", "ea825233-6829-4ba3-b907-f6ab8d0a0e9e");
+   Serial.printf("Humidity and Temp Sensor initialized: %b", hts.begin());
 }
 
 // Sensor threading
@@ -119,6 +120,7 @@ void sensorThreadEntry(void *pvParameters) {
 
     // Serialize for transmission
     serializeJson(dataToTransmit, data);
+    serializeJsonPretty(dataToTransmit, Serial);
 
     // Only transmit data when clients are connected
     if(pServer->getConnectedCount() > 0) {

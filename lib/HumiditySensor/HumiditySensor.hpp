@@ -21,6 +21,8 @@ class HumiditySensor : public Sensor {
 
         void setConnected(boolean status);
 
+        boolean begin();
+
         boolean getConnected();
 
         JsonDocument parseData();
