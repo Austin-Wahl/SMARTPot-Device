@@ -7,4 +7,5 @@
 class Util {
     public:
         static struct ActualConditions formatConditions(JsonDocument data);
+        static String soilMoistureToString(int rawMoisture);
 };

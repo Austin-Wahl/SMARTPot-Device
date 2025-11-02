@@ -6,21 +6,22 @@
 #include <Sensor.hpp> 
 #include <Wire.h>
 #include <Plant.hpp>
+#include <Util.hpp>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
-class Display : public Adafruit_SSD1306{
+class Display : public Adafruit_SSD1306 {
     private:
         uint8_t addr;
         String name;
         String id;
-
+        Plant *pPlant;
     public:
         Display(){}
-        Display(uint8_t addr, String name, String id);
+        Display(uint8_t addr, String name, String id, Plant *pPlant);
         
         boolean begin();
         String getId() const {return id;}

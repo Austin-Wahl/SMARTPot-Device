@@ -1,28 +1,25 @@
-#include <HumiditySensor.hpp>
+#include <MoistureSensor.hpp>
 
-HumiditySensor::HumiditySensor() {};
+MoistureSensor::MoistureSensor() {}
+MoistureSensor::MoistureSensor(uint8_t addr, String name, String id) : Sensor(addr, name, id, MOISTURE) {
+    sensor = Adafruit_seesaw();
+}
 
-HumiditySensor::HumiditySensor(uint8_t addr, String name, String id) : Sensor(addr, name, id, TEMPERATURE_AND_HUMIDITY) {
-    sensor = Adafruit_HTU31D();
-}    
-
-boolean HumiditySensor::begin() {
+boolean MoistureSensor::begin() {
     return sensor.begin(addr);
 }
 
-void HumiditySensor::readData() {
-    sensors_event_t temp, hum;
-    sensor.getEvent(&hum, &temp);
-    sensorData.humidity = hum.relative_humidity;
-    sensorData.temperature = temp.temperature;
+void MoistureSensor::readData() {
+    sensorData.temperature = sensor.getTemp();
+    sensorData.moisture = sensor.touchRead(0);
 }
 
-JsonDocument HumiditySensor::parseData() {
+JsonDocument MoistureSensor::parseData() {
     JsonDocument data;
     JsonDocument doc;
 
     float temp = sensorData.temperature;
-    float humidity = sensorData.humidity;
+    float moisture = sensorData.moisture;
 
     // Connection is checked everytime the data is parsed
     Wire.beginTransmission(this->getAddr());
@@ -36,7 +33,7 @@ JsonDocument HumiditySensor::parseData() {
     }
 
     data["temperature"] = connected ? (temp * 9/5) + 32 : -1;
-    data["humidity"] = connected ? humidity : -1;
+    data["moisture"] = connected ? moisture : -1;
 
     doc["name"] = this->getName();
     doc["id"] = this->getId();
@@ -44,4 +41,4 @@ JsonDocument HumiditySensor::parseData() {
     doc["data"] = data;
 
     return doc;
-}       
+}

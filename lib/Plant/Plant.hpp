@@ -18,6 +18,7 @@ struct ActualConditions {
     float humidity;
     float light;
     float soilMoisture;
+    float soilTemperature;
 };
 
 class Plant {

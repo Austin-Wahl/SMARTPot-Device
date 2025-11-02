@@ -12,7 +12,6 @@ class HumiditySensor : public Sensor {
     private:
         Adafruit_HTU31D sensor;
         TempAndHumidity sensorData;
-        boolean connected;
         
     public:
         HumiditySensor();
@@ -20,11 +19,7 @@ class HumiditySensor : public Sensor {
 
         void readData();
 
-        void setConnected(boolean status);
-
         boolean begin();
-
-        boolean getConnected();
 
         JsonDocument parseData();
 };

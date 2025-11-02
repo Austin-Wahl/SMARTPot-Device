@@ -5,9 +5,11 @@
 #include "CharacteristicCallbacks.hpp"
 #include "BLE2902.h"
 #include "Wire.h"
-#include <Display.hpp>
 #include <Util.hpp>
 #include "LittleFS.h"
+#include <LightSensor.cpp>
+#include <Display.hpp>
+#include <MoistureSensor.hpp>
 
 #define SENSOR_READ_DURATION_MS 5000  // Time in MS between sensor readings
 #define BLE_NAME "SmartPot"
@@ -36,6 +38,8 @@ boolean loadPlantDatabaseIntoMemory();
 // Global Variables 
 JsonDocument plantDatabase;
 HumiditySensor hts;
+LightSensor lightSensor;
+MoistureSensor moistureSensor;
 Display display;
 BLEServer *pServer;
 
@@ -95,11 +99,20 @@ void bluetoothSetup() {
 
 // Sensor configuration
 void sensorSetup() {
+  // Temperature and Humidity Sensor
   hts = HumiditySensor(TEMP_ADDRESS, "Humidity and Temperature", "ea825233-6829-4ba3-b907-f6ab8d0a0e9e");
-  Serial.printf("Humidity and Temp Sensor initialized: %d", hts.begin());
+  Serial.printf("Humidity and Temp Sensor initialized:\n %d", hts.begin());
+
+  // Light sensor
+  lightSensor = LightSensor(LIGHT_ADDRESS, "Light", "light-sensor-01");
+  Serial.printf("Light Sensor initialized: %d\n", lightSensor.begin());
+
+  // Moisture sensor
+  moistureSensor = MoistureSensor(SOIL_ADDRESS, "Soil Moisture", "moisture-sensor-01");
+  Serial.printf("Light Sensor initialized: %d\n", moistureSensor.begin());
 
   
-  display = Display(DISPLAY_ADDRESS, "Display", "display-01");
+  display = Display(DISPLAY_ADDRESS, "Display", "display-01", &plant);
   display.begin();
   display.drawBootScreen();
   delay(5000);
@@ -113,9 +126,15 @@ void sensorThreadEntry(void *pvParameters) {
 
     // Read in data from sensor
     hts.readData();
+    lightSensor.readData();
+    moistureSensor.readData();
 
     // Format to JSON for ease of use
     dataToTransmit.add(hts.parseData());
+    dataToTransmit.add(lightSensor.parseData());
+    dataToTransmit.add(moistureSensor.parseData());
+
+    serializeJsonPretty(dataToTransmit, Serial);
 
     // Serialize for transmission
     serializeJson(dataToTransmit, data);
