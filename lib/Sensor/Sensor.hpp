@@ -18,16 +18,19 @@ class Sensor {
         String id;
         boolean connected;
         SensorType sensorType;
+        uint8_t addr;
+
     public:
         Sensor() {}
-        Sensor(String name, String id, enum SensorType sensorType)
-            : name(name), id(id), sensorType(sensorType) {}
+        Sensor(uint8_t addr, String name, String id, enum SensorType sensorType)
+            : addr(addr), name(name), id(id), sensorType(sensorType) {}
 
         virtual ~Sensor() {}
         
         
         String getName() const { return name; }
         String getId()   const { return id; }
+        uint8_t getAddr() const {return addr;}
 
         boolean getConnected()   const { return id; }
         void setConnected(boolean status);

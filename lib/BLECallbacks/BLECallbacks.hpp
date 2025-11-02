@@ -1,26 +1,35 @@
 #pragma once
 
 #include <Arduino.h>
-#include <BLEDevice.h>  // BLE LIB
-#include <BLEUtils.h>   // BLE LIB
-#include <BLEServer.h>  // BLE LIB
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
 #include <CharacteristicCallbacks.hpp>
+#include <Display.hpp>
 
 class BLECallbacks : public BLEServerCallbacks {
    private:
       CharacteristicCallbacks *cb;
-      int led;
+      struct ActualConditions &tempValues;
+      Display *display;
+      String &connectionStatus;
+
    public:
-      BLECallbacks(CharacteristicCallbacks *cb, int bluetooth_led_pin_number) {
-         this->cb = cb;
-         this->led = bluetooth_led_pin_number;
+      BLECallbacks(CharacteristicCallbacks *cb,
+                   struct ActualConditions &tempValues,
+                   Display *display, String &connectionStatus)
+          : cb(cb), tempValues(tempValues), display(display), connectionStatus(connectionStatus) {
       }
-      int getLedPin() {
-         return this->led;
-      }
+
       void onConnect(BLEServer *pServer) override;
       void onDisconnect(BLEServer *pServer) override;
-      CharacteristicCallbacks* getCharacteristicCallback() {
-         return this->cb;
+
+      struct ActualConditions getTempValues() { return tempValues; }
+
+      Display *getDisplay() { return display; }
+      String &getConnectionStatus() {return connectionStatus;}
+      void setConnectionStauts(String newStatus) {connectionStatus = newStatus;}
+      CharacteristicCallbacks *getCharacteristicCallback() {
+         return cb;
       }
 };

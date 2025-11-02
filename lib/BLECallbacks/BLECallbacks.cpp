@@ -2,13 +2,16 @@
 #include <Arduino.h>
 void BLECallbacks::onConnect(BLEServer *pServer) {
    Serial.println("Client Connected..");
-   digitalWrite(this->getLedPin(), HIGH);
+   struct ActualConditions temp = this->getTempValues();
+   this->setConnectionStauts("Connected");
+   this->getDisplay()->drawScreen(temp, this->getConnectionStatus());
 }
 
 void BLECallbacks::onDisconnect(BLEServer *pServer) {
       Serial.println("Client Disconnected");
-      digitalWrite(this->getLedPin(), LOW);
-
+      struct ActualConditions temp = this->getTempValues();
+      this->setConnectionStauts("Disconnected");
+      this->getDisplay()->drawScreen(temp, this->getConnectionStatus());
       delay(1000);
       pServer->startAdvertising();
 }

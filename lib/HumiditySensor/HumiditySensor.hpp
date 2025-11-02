@@ -1,6 +1,7 @@
 #pragma once
 #include <Sensor.hpp>
 #include <Adafruit_HTU31D.h>
+#include <Wire.h>
 
 struct TempAndHumidity {
     float temperature;
@@ -15,7 +16,7 @@ class HumiditySensor : public Sensor {
         
     public:
         HumiditySensor();
-        HumiditySensor(uint8_t pin, String name, String id); 
+        HumiditySensor(uint8_t addr, String name, String id); 
 
         void readData();
 

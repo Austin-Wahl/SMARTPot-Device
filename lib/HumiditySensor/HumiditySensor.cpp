@@ -2,12 +2,12 @@
 
 HumiditySensor::HumiditySensor() {};
 
-HumiditySensor::HumiditySensor(uint8_t addr, String name, String id) : Sensor(name, id, TEMPERATURE_AND_HUMIDITY) {
+HumiditySensor::HumiditySensor(uint8_t addr, String name, String id) : Sensor(addr, name, id, TEMPERATURE_AND_HUMIDITY) {
     sensor = Adafruit_HTU31D();
 }    
 
 boolean HumiditySensor::begin() {
-    return sensor.begin();
+    return sensor.begin(addr);
 }
 
 void HumiditySensor::readData() {
@@ -32,15 +32,19 @@ JsonDocument HumiditySensor::parseData() {
     float temp = sensorData.temperature;
     float humidity = sensorData.humidity;
 
-    data["temperature"] = (temp * 9/5) + 32;
-    data["humidity"] = humidity;
-
     // Connection is checked everytime the data is parsed
-    if(isnan(temp) && isnan(humidity)) {
-        this->setConnected(false);
-    } else {
+    Wire.beginTransmission(this->getAddr());
+    byte error = Wire.endTransmission();
+
+    if(error == 0) {
         this->setConnected(true);
+    } else {
+        Serial.println(error);
+        this->setConnected(false);
     }
+
+    data["temperature"] = connected ? (temp * 9/5) + 32 : 0;
+    data["humidity"] = connected ? humidity : 0;
 
     doc["name"] = this->getName();
     doc["id"] = this->getId();
