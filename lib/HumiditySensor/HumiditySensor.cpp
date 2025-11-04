@@ -35,7 +35,7 @@ JsonDocument HumiditySensor::parseData() {
         this->setConnected(false);
     }
 
-    data["temperature"] = connected ? (temp * 9/5) + 32 : -1;
+    data["temperature"] = connected ? temp : -1;
     data["humidity"] = connected ? humidity : -1;
 
     doc["name"] = this->getName();

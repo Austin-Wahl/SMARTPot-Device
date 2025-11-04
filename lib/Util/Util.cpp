@@ -33,3 +33,8 @@ String Util::soilMoistureToString(int rawMoisture) {
   if(rawMoisture <= 1600) return "Very Wet";
   if(rawMoisture <= 2000) return "Saturated";
 }
+
+double Util::celciusToFerinehight(double temp) {
+  if(temp == -1) return -1;
+  return (temp * 9/5) + 32;
+}

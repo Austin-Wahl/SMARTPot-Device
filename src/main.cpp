@@ -22,6 +22,9 @@
 #define LIGHT_ADDRESS 0x23
 #define SOIL_ADDRESS 0x36
 
+// These are pins
+#define RELAY_PIN 5
+
 Plant plant;
 BLEService *pService;
 BLECharacteristic *pCharacteristic;
@@ -42,10 +45,12 @@ LightSensor lightSensor;
 MoistureSensor moistureSensor;
 Display display;
 BLEServer *pServer;
+TemperatureScale temperatureScale = FERINEHIGHT;
 
 void setup() {
   Serial.begin(115200);
-
+  pinMode(RELAY_PIN, OUTPUT);
+  
   boolean status = loadPlantDatabaseIntoMemory();
   if(!status) {
     return;
@@ -140,7 +145,7 @@ void sensorThreadEntry(void *pvParameters) {
     serializeJson(dataToTransmit, data);
     results = Util::formatConditions(dataToTransmit);
   
-    display.drawScreen(results, connectionStatus);
+    display.drawScreen(results, connectionStatus, temperatureScale);
 
     // Only transmit data when clients are connected
     if(pServer->getConnectedCount() > 0) {

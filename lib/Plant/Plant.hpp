@@ -13,6 +13,18 @@ struct Conditions {
     float soilMoistureMax;
 };
 
+struct Weights {
+  double temperature;
+  double humidity;
+  double soil;
+  double light;
+};
+
+struct Range {
+  double min;
+  double max;
+};
+
 struct ActualConditions {
     float temperature;
     float humidity;
@@ -25,11 +37,15 @@ class Plant {
     private:
         String name;
         struct Conditions conditions;
-
+        Weights computeWeights(const ActualConditions& actual);
+        double metricScore(double value, Range ideal);
+        String selectedPlant;
     public:
         Plant();
         Plant(JsonDocument plantDatabase);
         Plant(String name, JsonDocument plantDatabase);
+        String getSelectedPlant();
+        void setSelectedPlant(String plant);
         String getName();
-        boolean isHealthy(struct ActualConditions actualConditions);
+        double calculateHealthScore(struct ActualConditions& actualConditions);
 };

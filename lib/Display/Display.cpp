@@ -9,47 +9,58 @@ Display::Display(uint8_t addr, String name, String id, Plant *pPlant) : Adafruit
 bool Display::begin() {
     return Adafruit_SSD1306::begin(SSD1306_SWITCHCAPVCC, addr);
 }
-void Display::drawScreen(struct ActualConditions &tempValues, String connectionStatus) {
+void Display::drawScreen(struct ActualConditions &tempValues, String connectionStatus, TemperatureScale ts) {
   // Reset the display on every frame
   clearDisplay();
   setTextSize(1);
+
+  setCursor(0, 0);
+  setRotation(1);
+  print(pPlant->getSelectedPlant());
+  setRotation(0);
+  setCursor(0,0);
+
 
   drawBluetoothLogo(connectionStatus); // Draws the BT Logo
   setCursor(0,20);
   
   // Draws Temp and Humidity Sensor data
-  if(tempValues.temperature == -1 && tempValues.humidity == -1) {
-    println("Temperature: NC");
-    println("Humidity: NC");
-  } else {
-    print("Temperature: ");
-    print(tempValues.temperature, 2);
-    println("F");
 
-    print("Humidity: ");
+  if(tempValues.temperature == -1 && tempValues.humidity == -1) {
+    println("TEMP: NC");
+    println("HUM : NC");
+  } else {
+    print("TEMP: ");
+    double temperature = ts == FERINEHIGHT ? Util::celciusToFerinehight(tempValues.temperature) : tempValues.temperature;
+    print(temperature, 2);
+    println(ts == FERINEHIGHT ? "*F" : "*C");
+
+    print("HUM : ");
     print(tempValues.humidity, 2);
     println("%");
   }
 
   if(tempValues.light == -1) {
-    println("Light: NC");
+    println("LT  : NC");
   } else {
-    print("Light: ");
+    print("LT  : ");
     print(tempValues.light);
     println("LUX");
   }
 
     if(tempValues.soilMoisture == -1) {
-        println("Moisture: NC");
+        println("SM  : NC");
     } else {
-        print("Moisture: ");
+        print("SM  : ");
         println(Util::soilMoistureToString(tempValues.soilMoisture));
     }
 
-  print("Health: ");
-  println(pPlant->isHealthy(tempValues));
-
-  // Draws light sensor values
+  print("HEALTH: ");
+  if(tempValues.humidity == -1 && tempValues.light == -1 && tempValues.soilMoisture && tempValues.temperature == -1) {
+    println("NC!");
+  } else {
+    println(pPlant->calculateHealthScore(tempValues));
+  }
 
   display();
 }

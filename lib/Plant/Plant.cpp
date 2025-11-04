@@ -2,9 +2,9 @@
 
 Plant::Plant() {}
 Plant::Plant(JsonDocument plantDatabase) {
-    name = "Generic";
-    conditions.temperatureMin = 60.0;
-    conditions.temperatureMax = 80.0;
+    selectedPlant = "Generic";
+    conditions.temperatureMin = 15.6;
+    conditions.temperatureMax = 26.7;
 
     conditions.humidityMin = 30.0;
     conditions.humidityMax = 80.0;
@@ -12,8 +12,8 @@ Plant::Plant(JsonDocument plantDatabase) {
     conditions.lightMin = 4000.0;
     conditions.lightMax = 12000.0;
 
-    conditions.soilMoistureMin = 35.0;
-    conditions.soilMoistureMax = 60.0;
+    conditions.soilMoistureMin = 400.0;
+    conditions.soilMoistureMax = 1300.0;
 }
 
 Plant::Plant(String name, JsonDocument plantDatabase) {
@@ -38,50 +38,86 @@ Plant::Plant(String name, JsonDocument plantDatabase) {
 String Plant::getName() {
     return this->name;
 }
-boolean Plant::isHealthy(struct ActualConditions actualConditions) {
-    if(actualConditions.humidity != -1) {
-        if(actualConditions.humidity > conditions.humidityMax) {
-            Serial.println("Humidity to high");
-            return false;
-        }
-        if(actualConditions.humidity < conditions.humidityMin) {
-            Serial.println("Humidity to low");
-            return false;
-        }
-    }
+double Plant::calculateHealthScore(struct ActualConditions &actualConditions) {
+  Weights w = computeWeights(actualConditions);
 
-    if(actualConditions.light != -1) {
-        if(actualConditions.light > conditions.lightMax) {
-            Serial.println("light to high");
-            return false;
-        }
-        if(actualConditions.light < conditions.lightMin) {
-            Serial.println("light to low");
-            return false;
-        }
-    }
+  struct Range temperatureRange;
+  struct Range moistureRange;
+  struct Range lightRange;
+  struct Range humidityRange;
 
-    if(actualConditions.soilMoisture != -1) {
-        if(actualConditions.soilMoisture > conditions.soilMoistureMax) {
-            Serial.println("soilMoisture to high");
-            return false;
-        }
-        if(actualConditions.soilMoisture < conditions.soilMoistureMin) {
-            Serial.println("soilMoisture to low");
-            return false;
-        }
-    }
+  temperatureRange.min = conditions.temperatureMin;
+  temperatureRange.max = conditions.temperatureMax;
+  
+  moistureRange.min = conditions.soilMoistureMin;
+  moistureRange.max = conditions.soilMoistureMax;
 
-    if(actualConditions.temperature != -1) {
-        if(actualConditions.temperature > conditions.temperatureMax) {
-            Serial.println("temperature to high");
-            return false;
-        }
-        if(actualConditions.temperature < conditions.temperatureMin) {
-            Serial.println("temperature to low");
-            return false;
-        }
-    }
+  lightRange.min = conditions.lightMin;
+  lightRange.max = conditions.lightMax;
 
-    return true;
+  humidityRange.min = conditions.humidityMin;
+  humidityRange.max = conditions.humidityMax;
+
+  double tScore = metricScore(actualConditions.temperature, temperatureRange);
+  double hScore = metricScore(actualConditions.humidity, humidityRange);
+  double sScore = metricScore(actualConditions.soilMoisture, moistureRange);
+  double lScore = metricScore(actualConditions.light, lightRange);
+
+  if (tScore < 0) tScore = 0;
+  if (hScore < 0) hScore = 0;
+  if (sScore < 0) sScore = 0;
+  if (lScore < 0) lScore = 0;
+
+  double health01 = w.temperature * tScore +
+                    w.humidity    * hScore +
+                    w.soil        * sScore +
+                    w.light       * lScore;
+
+  double health1to5 = 1.0 + 4.0 * health01;   
+  return round(health1to5 * 10) / 10.0;
+}
+
+Weights Plant::computeWeights(const ActualConditions& actual) {
+  double tW = 0.25;
+  double hW = 0.15;
+  double sW = 0.50;
+  double lW = 0.10;
+
+  if (actual.temperature == -1) tW = 0.0;
+  if (actual.humidity == -1)    hW = 0.0;
+  if (actual.soilMoisture == -1)        sW = 0.0;
+  if (actual.light == -1)       lW = 0.0;
+
+  double sum = tW + hW + sW + lW;
+  if (sum == 0) sum = 1;
+  double factor = 1.0 / sum;
+
+  Weights w;
+  w.temperature = tW * factor;
+  w.humidity    = hW * factor;
+  w.soil        = sW * factor;
+  w.light       = lW * factor;
+  return w;
+}
+
+double Plant::metricScore(double value, Range ideal) {
+  if (value == -1) return -1;  
+  if (value >= ideal.min && value <= ideal.max) return 1.0;
+
+  double diff;
+  if (value < ideal.min)
+    diff = (ideal.min - value) / ideal.min;
+  else
+    diff = (value - ideal.max) / ideal.max;
+
+  diff = std::min(diff, 1.0);
+  return std::max(0.0, 1.0 - diff); 
+}
+
+void Plant::setSelectedPlant(String plant) {
+    this->selectedPlant = plant;
+}
+
+String Plant::getSelectedPlant() {
+    return this->selectedPlant;
 }
