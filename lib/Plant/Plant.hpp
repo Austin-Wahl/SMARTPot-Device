@@ -1,17 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <ArduinoJson.h>
-
-struct Conditions {
-    float temperatureMin;
-    float temperatureMax;
-    float humidityMin;
-    float humidityMax;
-    float lightMin;
-    float lightMax;
-    float soilMoistureMin;
-    float soilMoistureMax;
-};
+#include <Util.hpp>
 
 struct Weights {
   double temperature;
@@ -25,14 +15,6 @@ struct Range {
   double max;
 };
 
-struct ActualConditions {
-    float temperature;
-    float humidity;
-    float light;
-    float soilMoisture;
-    float soilTemperature;
-};
-
 class Plant {
     private:
         String name;
@@ -40,10 +22,10 @@ class Plant {
         Weights computeWeights(const ActualConditions& actual);
         double metricScore(double value, Range ideal);
         String selectedPlant;
+        JsonDocument *pPlantDatabase;
     public:
         Plant();
-        Plant(JsonDocument plantDatabase);
-        Plant(String name, JsonDocument plantDatabase);
+        Plant(JsonDocument *plantDatabase);
         String getSelectedPlant();
         void setSelectedPlant(String plant);
         String getName();

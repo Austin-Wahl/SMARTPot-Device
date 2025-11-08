@@ -1,43 +1,16 @@
 #include <Plant.hpp>
 
 Plant::Plant() {}
-Plant::Plant(JsonDocument plantDatabase) {
-    selectedPlant = "Generic";
-    conditions.temperatureMin = 15.6;
-    conditions.temperatureMax = 26.7;
-
-    conditions.humidityMin = 30.0;
-    conditions.humidityMax = 80.0;
-
-    conditions.lightMin = 4000.0;
-    conditions.lightMax = 12000.0;
-
-    conditions.soilMoistureMin = 400.0;
-    conditions.soilMoistureMax = 1300.0;
+Plant::Plant(JsonDocument *plantDatabase) {
+    pPlantDatabase = plantDatabase;
+    conditions = Util::jsonToStruct((*plantDatabase)["Generic"]);
 }
 
-Plant::Plant(String name, JsonDocument plantDatabase) {
-    this->name = name;
-
-    JsonDocument tempPlantData = plantDatabase[name];
-
-    struct Conditions c;
-
-    c.temperatureMin   = tempPlantData["temperatureMin"]   | 0.0f;
-    c.temperatureMax   = tempPlantData["temperatureMax"]   | 0.0f;
-    c.humidityMin      = tempPlantData["humidityMin"]      | 0.0f;
-    c.humidityMax      = tempPlantData["humidityMax"]      | 0.0f;
-    c.lightMin         = tempPlantData["lightMin"]         | 0.0f;
-    c.lightMax         = tempPlantData["lightMax"]         | 0.0f;
-    c.soilMoistureMin  = tempPlantData["soilMoistureMin"]  | 0.0f;
-    c.soilMoistureMax  = tempPlantData["soilMoistureMax"]  | 0.0f;
-
-    conditions = c;
-}
 
 String Plant::getName() {
     return this->name;
 }
+
 double Plant::calculateHealthScore(struct ActualConditions &actualConditions) {
   Weights w = computeWeights(actualConditions);
 
@@ -79,9 +52,9 @@ double Plant::calculateHealthScore(struct ActualConditions &actualConditions) {
 
 Weights Plant::computeWeights(const ActualConditions& actual) {
   double tW = 0.25;
-  double hW = 0.15;
-  double sW = 0.50;
-  double lW = 0.10;
+  double hW = 0.25;
+  double sW = 0.25;
+  double lW = 0.25;
 
   if (actual.temperature == -1) tW = 0.0;
   if (actual.humidity == -1)    hW = 0.0;
@@ -116,6 +89,7 @@ double Plant::metricScore(double value, Range ideal) {
 
 void Plant::setSelectedPlant(String plant) {
     this->selectedPlant = plant;
+    conditions = Util::jsonToStruct((*pPlantDatabase)[plant]);
 }
 
 String Plant::getSelectedPlant() {

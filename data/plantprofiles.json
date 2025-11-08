@@ -1,4 +1,14 @@
 {
+  "Generic": {
+    "temperatureMin": 15.6,
+    "temperatureMax": 26.7,
+    "humidityMin": 40,
+    "humidityMax": 70,
+    "lightMin": 5000,
+    "lightMax": 15000,
+    "soilMoistureMin": 830,
+    "soilMoistureMax": 1280
+  },
   "Pothos (Golden)": {
     "temperatureMin": 18,
     "temperatureMax": 29,

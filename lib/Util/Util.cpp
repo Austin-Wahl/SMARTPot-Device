@@ -1,7 +1,7 @@
 
 #include <Util.hpp>
 
-struct ActualConditions Util::formatConditions(JsonDocument data) {
+struct ActualConditions Util::formatConditions(JsonDocument *data) {
  ActualConditions conditions;
   conditions.humidity = -1;
   conditions.light = -1;
@@ -9,19 +9,25 @@ struct ActualConditions Util::formatConditions(JsonDocument data) {
   conditions.soilTemperature = -1;
   conditions.temperature = -1;
 
-  for(int i = 0; i<data.size(); i++) {
-    String tempName = data[i]["name"];
+  if(data == nullptr || data->isNull()) return conditions;
+
+  JsonArray sensorDataArray = data->as<JsonArray>();
+
+  for(JsonObject sensorEntry : sensorDataArray) {
+    String tempName = sensorEntry["name"];
+    JsonObject dataPayload = sensorEntry["data"].as<JsonObject>();
     if(tempName.equals("Humidity and Temperature")) {
-      conditions.humidity = data[i]["data"]["humidity"] | -1.0f;
-      conditions.temperature = data[i]["data"]["temperature"] | -1.0f;   
+      conditions.humidity = dataPayload["humidity"] | -1.0f;
+      conditions.temperature = dataPayload["temperature"] | -1.0f;   
     } else if(tempName.equals("Light")) {
-      conditions.light = data[i]["data"]["light"] | -1.0f;   
+      conditions.light = dataPayload["light"] | -1.0f;   
     } else if(tempName.equals("Soil Moisture")) {
-      conditions.soilTemperature = data[i]["data"]["temperature"] | -1.0f;   
-      conditions.soilMoisture = data[i]["data"]["moisture"] | -1.0f;   
+      conditions.soilTemperature = dataPayload["temperature"] | -1.0f;   
+      conditions.soilMoisture = dataPayload["moisture"] | -1.0f;   
     }
   }
 
+  Serial.print(conditions.temperature);
   return conditions;
 }
 
@@ -31,10 +37,24 @@ String Util::soilMoistureToString(int rawMoisture) {
   if(rawMoisture <= 1000) return "Damp";
   if(rawMoisture <= 1300) return "Wet";
   if(rawMoisture <= 1600) return "Very Wet";
-  if(rawMoisture <= 2000) return "Saturated";
+  return "Saturated";
 }
 
 double Util::celciusToFerinehight(double temp) {
   if(temp == -1) return -1;
   return (temp * 9/5) + 32;
+}
+
+struct Conditions Util::jsonToStruct(const JsonObject& object) {
+  Conditions c;
+
+  c.temperatureMin   = object["temperatureMin"]   | 0.0f; // Using | 0.0f for default if key missing
+  c.temperatureMax   = object["temperatureMax"]   | 0.0f;
+  c.humidityMin      = object["humidityMin"]      | 0.0f;
+  c.humidityMax      = object["humidityMax"]      | 0.0f;
+  c.lightMin         = object["lightMin"]         | 0.0f;
+  c.lightMax         = object["lightMax"]         | 0.0f;
+  c.soilMoistureMin  = object["soilMoistureMin"]  | 0.0f;
+  c.soilMoistureMax  = object["soilMoistureMax"];
+  return c;
 }

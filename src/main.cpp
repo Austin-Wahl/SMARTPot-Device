@@ -1,15 +1,16 @@
 #include "BLECallbacks.hpp"
 #include "HumiditySensor.hpp"
+#include <Util.hpp>
 #include "Plant.hpp"
 #include "BLECallbacks.hpp"
 #include "CharacteristicCallbacks.hpp"
 #include "BLE2902.h"
 #include "Wire.h"
-#include <Util.hpp>
 #include "LittleFS.h"
 #include <LightSensor.cpp>
 #include <Display.hpp>
 #include <MoistureSensor.hpp>
+#include <Preferences.h>
 
 #define SENSOR_READ_DURATION_MS 5000  // Time in MS between sensor readings
 #define BLE_NAME "SmartPot"
@@ -37,6 +38,7 @@ void sensorThreadEntry(void *pvParameters);
 void bluetoothSetup();
 void sensorSetup();
 boolean loadPlantDatabaseIntoMemory();
+void initPreferenceValues();
 
 // Global Variables 
 JsonDocument plantDatabase;
@@ -46,17 +48,20 @@ MoistureSensor moistureSensor;
 Display display;
 BLEServer *pServer;
 TemperatureScale temperatureScale = FERINEHIGHT;
+Preferences preferences;
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
-  
+  preferences.begin("prefs", false);
+
   boolean status = loadPlantDatabaseIntoMemory();
   if(!status) {
     return;
   }
 
-  plant = Plant(plantDatabase);
+  plant = Plant(&plantDatabase);
+  initPreferenceValues();
 
   Wire.begin(21, 22);
   Wire.setClock(100000);
@@ -67,6 +72,13 @@ void setup() {
 }
 
 void loop() {}
+
+void initPreferenceValues() {
+  // Retrieve temperature preference from persisted memory
+  // 0 = FER, 1 = CEL
+  temperatureScale = (TemperatureScale)preferences.getInt("mes-sys", 0); // Default is Ferinehight
+  plant.setSelectedPlant(preferences.getString("plant", "Generic"));
+}
 
 // Bluetooth configuration
 void bluetoothSetup() {
@@ -120,15 +132,20 @@ void sensorSetup() {
   display = Display(DISPLAY_ADDRESS, "Display", "display-01", &plant);
   display.begin();
   display.drawBootScreen();
-  delay(5000);
+  // delay(5000);
 }
 
 // Sensor threading
 void sensorThreadEntry(void *pvParameters) {
   JsonDocument dataToTransmit;
+  int count = 0;
  while(1) {
+    if(count == 2) {
+      plant.setSelectedPlant("Pothos (Golden)");
+      preferences.putString("plant", "Pothos (Golden)");
+    }
     String data;
-
+    
     // Read in data from sensor
     hts.readData();
     lightSensor.readData();
@@ -139,11 +156,11 @@ void sensorThreadEntry(void *pvParameters) {
     dataToTransmit.add(lightSensor.parseData());
     dataToTransmit.add(moistureSensor.parseData());
 
-    serializeJsonPretty(dataToTransmit, Serial);
+    // serializeJsonPretty(dataToTransmit, Serial);
 
     // Serialize for transmission
     serializeJson(dataToTransmit, data);
-    results = Util::formatConditions(dataToTransmit);
+    results = Util::formatConditions(&dataToTransmit);
   
     display.drawScreen(results, connectionStatus, temperatureScale);
 
@@ -155,6 +172,7 @@ void sensorThreadEntry(void *pvParameters) {
     }
     dataToTransmit.clear();
     // Wait 5 seconds
+    count++;
     vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_DURATION_MS));
   }
 }
@@ -179,5 +197,6 @@ boolean loadPlantDatabaseIntoMemory() {
     Serial.println(error.f_str());
     return false;
   }
+
   return true;
 }
