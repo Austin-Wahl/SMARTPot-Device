@@ -15,7 +15,14 @@
 #define SENSOR_READ_DURATION_MS 5000  // Time in MS between sensor readings
 #define BLE_NAME "SmartPot"
 #define BLE_SERVICE_UUID "6360ec7b-a2b6-41d2-87c6-be45caf92838"
-#define BLE_CHARACTERISTIC_UUID "46f45f15-b963-4e4e-bde9-6a9a677df4b4"
+#define BLE_SEND_DATA_CHARACTERISTIC_ID "46f45f15-b963-4e4e-bde9-6a9a677df4b4"
+#define BLE_SEND_UUID_CHARACTERISTIC_ID "4556f68a-e305-4ad2-aa34-e702e53a4b11"
+#define BLE_RECIEVE_CONFIG_CHARACTERISTIC_ID "b645f869-3e5d-45ef-b1b6-2c17e0abe75c"
+#define BLE_SEND_NOTIF_CHARACTERISTIC_ID "fcd0c4ed-e302-4adc-9f50-71f0de4e6045"
+
+// Every SMARTPot has a unique UUID that is used to tie it to a database record in the app.
+// Be sure to change this if you're flashing another pot. 
+const char DEVICE_UUID[] = "5fa2b405-f5ef-42d3-88cd-8ab1f80d0611";
 
 // These are the addresses for the sensors 
 #define DISPLAY_ADDRESS 0x3C
@@ -25,10 +32,15 @@
 
 // These are pins
 #define RELAY_PIN 5
+#define WATER_SENSOR_PIN 32
 
 Plant plant;
 BLEService *pService;
-BLECharacteristic *pCharacteristic;
+BLECharacteristic *pCharacteristicSend;
+BLECharacteristic *pCharacteristicRecieve;
+BLECharacteristic *pCharacteristicDeviceId;
+BLECharacteristic *pCharacteristicNotification;
+
 struct ActualConditions results;
 String connectionStatus = "Disconnected";
 
@@ -39,6 +51,7 @@ void bluetoothSetup();
 void sensorSetup();
 boolean loadPlantDatabaseIntoMemory();
 void initPreferenceValues();
+void wateringController(int moisture);
 
 // Global Variables 
 JsonDocument plantDatabase;
@@ -49,18 +62,21 @@ Display display;
 BLEServer *pServer;
 TemperatureScale temperatureScale = FERINEHIGHT;
 Preferences preferences;
+int waterLevel = 0;
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
   preferences.begin("prefs", false);
 
+  pinMode(WATER_SENSOR_PIN, INPUT_PULLUP);
+  digitalWrite(RELAY_PIN, LOW);
   boolean status = loadPlantDatabaseIntoMemory();
   if(!status) {
     return;
   }
 
-  plant = Plant(&plantDatabase);
+  plant = Plant(&plantDatabase, &preferences);
   initPreferenceValues();
 
   Wire.begin(21, 22);
@@ -84,30 +100,59 @@ void initPreferenceValues() {
 void bluetoothSetup() {
   // Set name
   BLEDevice::init(BLE_NAME);
-
   // Create server
   pServer = BLEDevice::createServer();
   // Create Service 
   pService = pServer->createService(BLE_SERVICE_UUID);
-  
-  // Create Characteristic 
-  CharacteristicCallbacks *bleCharCb = new CharacteristicCallbacks();
-  pCharacteristic = pService->createCharacteristic(BLE_CHARACTERISTIC_UUID, 
+
+  // Create Characteristics
+  // This one is for sending sensor data
+  pCharacteristicSend = pService->createCharacteristic(BLE_SEND_DATA_CHARACTERISTIC_ID, 
     BLECharacteristic::PROPERTY_READ |
     BLECharacteristic::PROPERTY_NOTIFY
   );
-  pCharacteristic->setCallbacks(bleCharCb);
+  pCharacteristicSend->addDescriptor(new BLE2902());
 
-  BLE2902 *p2902Descriptor = new BLE2902();
-  pCharacteristic->addDescriptor(p2902Descriptor);
+  // This one sends out the devices unique UUID
+  pCharacteristicDeviceId = pService->createCharacteristic(BLE_SEND_UUID_CHARACTERISTIC_ID, BLECharacteristic::PROPERTY_READ);
+  pCharacteristicDeviceId->addDescriptor(new BLE2902());
+  pCharacteristicDeviceId->setValue(DEVICE_UUID);
 
-  BLECallbacks *cb = new BLECallbacks(bleCharCb, results, &display, connectionStatus);
+  // This one is for sending out notifications
+  pCharacteristicNotification = pService->createCharacteristic(BLE_SEND_NOTIF_CHARACTERISTIC_ID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pCharacteristicNotification->addDescriptor(new BLE2902());
+
+  CharacteristicCallbacks *bleCharCb = new CharacteristicCallbacks(&plantDatabase, &plant, &temperatureScale, pCharacteristicNotification, &preferences);
+
+  // Characteristic for reading in device config over bluetooth
+  pCharacteristicRecieve = pService->createCharacteristic(BLE_RECIEVE_CONFIG_CHARACTERISTIC_ID,    
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY | 
+    BLECharacteristic::PROPERTY_WRITE
+  );
+  pCharacteristicRecieve->addDescriptor(new BLE2902());
+  pCharacteristicRecieve->setCallbacks(bleCharCb);
+  
+  BLECallbacks *cb = new BLECallbacks(bleCharCb, results, &display, connectionStatus, &temperatureScale, &waterLevel);
   pServer->setCallbacks(cb);
-
 
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(BLE_SERVICE_UUID);
+
+  uint8_t uuidBytes[16];
+  sscanf(DEVICE_UUID, "%02hhx%02hhx%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx",
+        &uuidBytes[0], &uuidBytes[1], &uuidBytes[2], &uuidBytes[3],
+        &uuidBytes[4], &uuidBytes[5], &uuidBytes[6], &uuidBytes[7],
+        &uuidBytes[8], &uuidBytes[9], &uuidBytes[10], &uuidBytes[11],
+        &uuidBytes[12], &uuidBytes[13], &uuidBytes[14], &uuidBytes[15]);
+  BLEAdvertisementData d;
+  d.setManufacturerData(std::string((char *) uuidBytes, 16));
+
+  pAdvertising->setAdvertisementData(d);
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06); 
   pAdvertising->setMinPreferred(0x12);
@@ -118,62 +163,89 @@ void bluetoothSetup() {
 void sensorSetup() {
   // Temperature and Humidity Sensor
   hts = HumiditySensor(TEMP_ADDRESS, "Humidity and Temperature", "ea825233-6829-4ba3-b907-f6ab8d0a0e9e");
-  Serial.printf("Humidity and Temp Sensor initialized:\n %d", hts.begin());
+  hts.begin();
 
   // Light sensor
   lightSensor = LightSensor(LIGHT_ADDRESS, "Light", "light-sensor-01");
-  Serial.printf("Light Sensor initialized: %d\n", lightSensor.begin());
+  lightSensor.begin();
 
   // Moisture sensor
   moistureSensor = MoistureSensor(SOIL_ADDRESS, "Soil Moisture", "moisture-sensor-01");
-  Serial.printf("Light Sensor initialized: %d\n", moistureSensor.begin());
-
+  moistureSensor.begin();
   
   display = Display(DISPLAY_ADDRESS, "Display", "display-01", &plant);
   display.begin();
   display.drawBootScreen();
-  // delay(5000);
+  delay(5000);
 }
 
 // Sensor threading
 void sensorThreadEntry(void *pvParameters) {
   JsonDocument dataToTransmit;
-  int count = 0;
  while(1) {
-    if(count == 2) {
-      plant.setSelectedPlant("Pothos (Golden)");
-      preferences.putString("plant", "Pothos (Golden)");
-    }
     String data;
-    
     // Read in data from sensor
     hts.readData();
     lightSensor.readData();
     moistureSensor.readData();
 
+    // lowkey not makikng a class for this
+    waterLevel = digitalRead(WATER_SENSOR_PIN);
+    JsonDocument doc;
+    JsonDocument healthDoc;
+
+    doc["name"] = "Water Level";
+    doc["id"] = "Water Level 1";
+    doc["connected"] = true;
+    doc["data"]["level"] = waterLevel == HIGH ? "Low" : "High";
+
+    
     // Format to JSON for ease of use
     dataToTransmit.add(hts.parseData());
     dataToTransmit.add(lightSensor.parseData());
     dataToTransmit.add(moistureSensor.parseData());
+    dataToTransmit.add(doc);
+    
+    results = Util::formatConditions(&dataToTransmit);
+    // calculate health score
+    healthDoc["health"] = plant.calculateHealthScore(results);
+    dataToTransmit.add(healthDoc);
 
-    // serializeJsonPretty(dataToTransmit, Serial);
 
     // Serialize for transmission
     serializeJson(dataToTransmit, data);
-    results = Util::formatConditions(&dataToTransmit);
-  
-    display.drawScreen(results, connectionStatus, temperatureScale);
+
+    display.drawScreen(results, connectionStatus, &temperatureScale, &waterLevel);
+
+    // Trigger watering
+    wateringController((int)results.soilMoisture);
 
     // Only transmit data when clients are connected
     if(pServer->getConnectedCount() > 0) {
       // Set value and notify client of new data
-      pCharacteristic->setValue(data.c_str());
-      pCharacteristic->notify();
+      pCharacteristicSend->setValue(data.c_str());
+      pCharacteristicSend->notify();
     }
     dataToTransmit.clear();
     // Wait 5 seconds
-    count++;
     vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_DURATION_MS));
+  }
+}
+
+void wateringController(int soilMoisture) {
+  // LOGIC INVERTED LOW = HIGH WATER
+  //                HIGH = LOW WATER
+  if(waterLevel == LOW && soilMoisture > -1) {
+    // Watering is trigged if the soil is to dry
+    // Get the plant record
+    int soilMin = plantDatabase[plant.getSelectedPlant()]["soilMoistureMin"].as<int>();
+    if(soilMoisture < soilMin) {
+      digitalWrite(RELAY_PIN, HIGH);
+    } else {
+      digitalWrite(RELAY_PIN, LOW);
+    }
+  } else {
+    digitalWrite(RELAY_PIN, LOW);
   }
 }
 

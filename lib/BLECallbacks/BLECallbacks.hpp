@@ -13,12 +13,14 @@ class BLECallbacks : public BLEServerCallbacks {
       struct ActualConditions &tempValues;
       Display *display;
       String &connectionStatus;
+      TemperatureScale *pTemperatureScale;
+      int *pWaterLevel;
 
    public:
       BLECallbacks(CharacteristicCallbacks *cb,
                    struct ActualConditions &tempValues,
-                   Display *display, String &connectionStatus)
-          : cb(cb), tempValues(tempValues), display(display), connectionStatus(connectionStatus) {
+                   Display *display, String &connectionStatus, TemperatureScale *pTemperatureScale, int *pWaterLevel)
+          : cb(cb), tempValues(tempValues), display(display), connectionStatus(connectionStatus), pTemperatureScale(pTemperatureScale), pWaterLevel(pWaterLevel) {
       }
 
       void onConnect(BLEServer *pServer) override;

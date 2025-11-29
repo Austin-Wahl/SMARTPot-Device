@@ -9,7 +9,7 @@ Display::Display(uint8_t addr, String name, String id, Plant *pPlant) : Adafruit
 bool Display::begin() {
     return Adafruit_SSD1306::begin(SSD1306_SWITCHCAPVCC, addr);
 }
-void Display::drawScreen(struct ActualConditions &tempValues, String connectionStatus, TemperatureScale ts) {
+void Display::drawScreen(struct ActualConditions &tempValues, String connectionStatus, TemperatureScale *ts, int *pWaterLevel) {
   // Reset the display on every frame
   clearDisplay();
   setTextSize(1);
@@ -22,8 +22,9 @@ void Display::drawScreen(struct ActualConditions &tempValues, String connectionS
 
 
   drawBluetoothLogo(connectionStatus); // Draws the BT Logo
-  setCursor(0,20);
-  
+  setCursor(16,9);
+  print((*pWaterLevel) == HIGH ? "WL" : "WH");
+  setCursor(0, 20);
   // Draws Temp and Humidity Sensor data
 
   if(tempValues.temperature == -1 && tempValues.humidity == -1) {
@@ -31,9 +32,9 @@ void Display::drawScreen(struct ActualConditions &tempValues, String connectionS
     println("HUM : NC");
   } else {
     print("TEMP: ");
-    double temperature = ts == FERINEHIGHT ? Util::celciusToFerinehight(tempValues.temperature) : tempValues.temperature;
+    double temperature = *ts == FERINEHIGHT ? Util::celciusToFerinehight(tempValues.temperature) : tempValues.temperature;
     print(temperature, 2);
-    println(ts == FERINEHIGHT ? "*F" : "*C");
+    println(*ts == FERINEHIGHT ? "*F" : "*C");
 
     print("HUM : ");
     print(tempValues.humidity, 2);

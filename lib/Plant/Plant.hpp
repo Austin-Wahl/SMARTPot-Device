@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <Util.hpp>
+#include <Preferences.h>
 
 struct Weights {
   double temperature;
@@ -23,9 +24,10 @@ class Plant {
         double metricScore(double value, Range ideal);
         String selectedPlant;
         JsonDocument *pPlantDatabase;
+        Preferences *pPreferences;
     public:
         Plant();
-        Plant(JsonDocument *plantDatabase);
+        Plant(JsonDocument *plantDatabase, Preferences *pPreferences);
         String getSelectedPlant();
         void setSelectedPlant(String plant);
         String getName();

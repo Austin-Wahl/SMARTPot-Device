@@ -27,7 +27,7 @@ class Display : public Adafruit_SSD1306 {
         String getId() const {return id;}
         String getName() const {return name;}
         uint8_t getAddr() const {return addr;} 
-        void drawScreen(struct ActualConditions &tempValues, String connectionStatus, TemperatureScale ts = CELCIUS);
+        void drawScreen(struct ActualConditions &tempValues, String connectionStatus, TemperatureScale *ts, int *pWaterLevel);
         void drawBluetoothLogo(String connectionStatus);       
         void drawBootScreen();
 };

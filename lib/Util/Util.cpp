@@ -27,7 +27,6 @@ struct ActualConditions Util::formatConditions(JsonDocument *data) {
     }
   }
 
-  Serial.print(conditions.temperature);
   return conditions;
 }
 

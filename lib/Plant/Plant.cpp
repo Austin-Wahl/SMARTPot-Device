@@ -1,9 +1,10 @@
 #include <Plant.hpp>
 
 Plant::Plant() {}
-Plant::Plant(JsonDocument *plantDatabase) {
+Plant::Plant(JsonDocument *plantDatabase, Preferences *pPreferences) {
     pPlantDatabase = plantDatabase;
     conditions = Util::jsonToStruct((*plantDatabase)["Generic"]);
+    this->pPreferences = pPreferences;
 }
 
 
@@ -90,6 +91,7 @@ double Plant::metricScore(double value, Range ideal) {
 void Plant::setSelectedPlant(String plant) {
     this->selectedPlant = plant;
     conditions = Util::jsonToStruct((*pPlantDatabase)[plant]);
+    pPreferences->putString("plant", plant);
 }
 
 String Plant::getSelectedPlant() {
