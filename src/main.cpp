@@ -192,7 +192,7 @@ void sensorThreadEntry(void *pvParameters) {
     // lowkey not makikng a class for this
     waterLevel = digitalRead(WATER_SENSOR_PIN);
     JsonDocument doc;
-    JsonDocument healthDoc;
+    JsonDocument metadataDoc;
 
     doc["name"] = "Water Level";
     doc["id"] = "Water Level 1";
@@ -208,8 +208,9 @@ void sensorThreadEntry(void *pvParameters) {
     
     results = Util::formatConditions(&dataToTransmit);
     // calculate health score
-    healthDoc["health"] = plant.calculateHealthScore(results);
-    dataToTransmit.add(healthDoc);
+    metadataDoc["metadata"]["health"] = plant.calculateHealthScore(results);
+    metadataDoc["metadata"]["unitOfMeasurement"] = temperatureScale;
+    dataToTransmit.add(metadataDoc);
 
 
     // Serialize for transmission
