@@ -17,7 +17,6 @@ Familiarize yourself with the following key directories to understand the projec
 - `/data/plantprofiles.json`
   - Plant Profile Database: This JSON file stores preconfigured parameters and thresholds used to assess the health status of various plant environments.
 
-This is a good, concise explanation of your `main.cpp` and how you're using multi-threading. Here's a slightly polished version with a few minor improvements for clarity and professionalism, without changing the core meaning:
 
 # `main.cpp`
 
